@@ -1,152 +1,93 @@
-const START_TIME_UTC = Date.UTC(2026, 9, 29, 0, 30, 0);
-const ZERO_PARTS = { days: '000000', hours: '00', minutes: '00', seconds: '00' };
+/* Eternal Jannati Stopwatch — fixed start, timestamp-derived elapsed time (no incremented counter). */
+(function (root) {
+  'use strict';
+  var START_ISO = '2026-10-29T06:30:00+06:00';   // = 2026-10-29T00:30:00Z
+  var START_MS = Date.parse(START_ISO);
 
-const elements = {
-  days: document.getElementById('daysValue'),
-  hours: document.getElementById('hoursValue'),
-  minutes: document.getElementById('minutesValue'),
-  seconds: document.getElementById('secondsValue'),
-  syncStatus: document.getElementById('syncStatus'),
-  srStatus: document.getElementById('srStatus')
-};
+  // Exact integer breakdown via BigInt; never negative.
+  function breakdown(nowMs, startMs) {
+    var n = Math.trunc(Number(nowMs)), s = Math.trunc(Number(startMs === undefined ? START_MS : startMs));
+    if (!isFinite(n) || !isFinite(s)) return { d: 0n, h: 0, m: 0, s: 0 };
+    var e = BigInt(n) - BigInt(s);
+    if (e < 0n) e = 0n;
+    return { d: e / 86400000n, h: Number(e % 86400000n / 3600000n), m: Number(e % 3600000n / 60000n), s: Number(e % 60000n / 1000n) };
+  }
+  var api = { START_ISO: START_ISO, START_MS: START_MS, breakdown: breakdown };
+  if (typeof module !== 'undefined' && module.exports) { module.exports = api; }
+  if (typeof document === 'undefined') return;
 
-const state = {
-  offsetMs: 0,
-  lastSyncLabel: 'Offline estimate • local device time',
-  refreshTimer: null,
-  lastDisplayedText: ''
-};
+  /* ---- clock model: monotonic anchor + wall-clock offset ---- */
+  var anchorServer = Date.now(), anchorPerf = performance.now(), wallOffset = 0, synced = false, srcName = '', precision = '', lastShown = 0, timer = 0, syncing = false;
+  var now = function () { return anchorServer + (performance.now() - anchorPerf); };
+  // performance.now() can stall during device sleep; if the wall clock is clearly ahead, re-anchor to it.
+  function resume() { var wall = Date.now() + wallOffset; if (wall - now() > 1500) { anchorServer = wall; anchorPerf = performance.now(); } }
 
-function formatPart(value, minimumLength) {
-  return String(value).padStart(minimumLength, '0');
-}
-
-function getCurrentTimeMs() {
-  return Date.now() + state.offsetMs;
-}
-
-function getElapsedMs() {
-  const now = getCurrentTimeMs();
-  return Math.max(0, now - START_TIME_UTC);
-}
-
-function formatElapsedMs(elapsedMs) {
-  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
-  const days = Math.floor(totalSeconds / 86400);
-  const remainder = totalSeconds % 86400;
-  const hours = Math.floor(remainder / 3600);
-  const minutes = Math.floor((remainder % 3600) / 60);
-  const seconds = remainder % 60;
-
-  return {
-    days: formatPart(days, 6),
-    hours: formatPart(hours, 2),
-    minutes: formatPart(minutes, 2),
-    seconds: formatPart(seconds, 2)
-  };
-}
-
-function updateDisplay(force = false) {
-  const elapsedMs = getElapsedMs();
-  const values = formatElapsedMs(elapsedMs);
-
-  const nextText = `${values.days} ${values.hours} ${values.minutes} ${values.seconds}`;
-
-  if (!force && nextText === state.lastDisplayedText) {
-    return;
+  var SOURCES = [
+    { name: 'worldtimeapi.org (UTC)', url: 'https://worldtimeapi.org/api/timezone/Etc/UTC', prec: '', parse: function (r) { return r.json().then(function (j) { return Date.parse(j.utc_datetime); }); } },
+    { name: 'this site’s server (HTTP Date header)', url: location.href.split('#')[0], prec: ' ±1 s', head: true,
+      parse: function (r) { var d = Date.parse(r.headers.get('Date')); return Promise.resolve(d + 500); } }
+  ];
+  function tryFetch(src) {
+    var ac = new AbortController(), to = setTimeout(function () { ac.abort(); }, 6000), p0 = performance.now();
+    return fetch(src.url + (src.head ? '' : ''), { method: src.head ? 'HEAD' : 'GET', cache: 'no-store', signal: ac.signal })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return src.parse(r).then(function (t) { return { t: t, mid: (p0 + performance.now()) / 2 }; }); })
+      .then(function (x) { if (!isFinite(x.t) || x.t < 1577836800000 || x.t > 4102444800000) throw new Error('invalid'); return x; })
+      .finally(function () { clearTimeout(to); });
+  }
+  function sync() {
+    if (syncing || !/^https?:$/.test(location.protocol) && SOURCES.length && false) return;
+    syncing = true;
+    var i = 0;
+    (function next() {
+      if (i >= SOURCES.length) { syncing = false; synced = false; setStatus(); return; }
+      var src = SOURCES[i++];
+      tryFetch(src).then(function (x) {
+        anchorServer = x.t; anchorPerf = x.mid;
+        wallOffset = x.t - (Date.now() - (performance.now() - x.mid));
+        synced = true; srcName = src.name; precision = src.prec; syncing = false; setStatus();
+      }, next);
+    })();
+  }
+  function setStatus() {
+    var si = $('si'), st = $('st');
+    if (synced) { si.textContent = '✓'; st.textContent = 'Synchronized with ' + srcName + precision + '. Rechecked every 10 minutes.'; }
+    else { si.textContent = '◌'; st.textContent = 'Offline estimate: using this device’s clock, not externally verified.'; }
   }
 
-  elements.days.textContent = values.days;
-  elements.hours.textContent = values.hours;
-  elements.minutes.textContent = values.minutes;
-  elements.seconds.textContent = values.seconds;
-
-  state.lastDisplayedText = nextText;
-
-  const spoken = `${values.days} days, ${values.hours} hours, ${values.minutes} minutes, ${values.seconds} seconds elapsed`;
-  elements.srStatus.textContent = spoken;
-}
-
-function scheduleNextRefresh() {
-  if (state.refreshTimer) {
-    clearTimeout(state.refreshTimer);
+  /* ---- rendering ---- */
+  function $(id) { return document.getElementById(id); }
+  var els = {}, cache = {};
+  function put(k, v) { if (cache[k] !== v) { cache[k] = v; els[k].textContent = v; } }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function plural(n, one, many) { return (n === 1n || n === 1) ? one : many; }
+  function paint(b, t) {
+    var d = b.d.toString();
+    put('d', d); put('h', pad(b.h)); put('m', pad(b.m)); put('s', pad(b.s));
+    put('dl', plural(b.d, 'Day', 'Days')); put('hl', plural(b.h, 'Hour', 'Hours')); put('ml', plural(b.m, 'Minute', 'Minutes')); put('sl', plural(b.s, 'Second', 'Seconds'));
+    var len = d.length <= 2 ? '1' : d.length <= 3 ? '3' : d.length <= 5 ? '5' : '8';
+    if (cache.len !== len) { cache.len = len; $('clock').setAttribute('data-len', len); }
+    $('note').hidden = t >= START_MS;
+    var sr = d + ' ' + cache.dl + ', ' + b.h + ' ' + cache.hl + ', ' + b.m + ' ' + cache.ml + ', ' + b.s + ' ' + cache.sl;
+    if (cache.sr !== sr) { cache.sr = sr; $('sr').textContent = sr; }
+  }
+  function tick() {
+    clearTimeout(timer); resume();
+    var t = Math.max(lastShown, Math.floor(now())); lastShown = t;   // never run backwards after a correction
+    paint(breakdown(t), t);
+    if (!document.hidden) timer = setTimeout(tick, 1000 - (t % 1000) + 5); // aligned to next second boundary
   }
 
-  const now = new Date();
-  const msUntilNextSecond = 1000 - (now.getTime() % 1000);
-
-  state.refreshTimer = setTimeout(() => {
-    updateDisplay(true);
-    scheduleNextRefresh();
-  }, msUntilNextSecond);
-}
-
-function setSyncStatus(label) {
-  state.lastSyncLabel = label;
-  elements.syncStatus.textContent = label;
-}
-
-async function syncTimeSource() {
-  const timeoutMs = 4000;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC', {
-      cache: 'no-store',
-      signal: controller.signal
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const payload = await response.json();
-    const iso = payload.utc_datetime || payload.datetime;
-
-    if (!iso || Number.isNaN(Date.parse(iso))) {
-      throw new Error('Missing valid utc_datetime');
-    }
-
-    const serverTime = Date.parse(iso);
-    const localNow = Date.now();
-    state.offsetMs = serverTime - localNow;
-    setSyncStatus('Synchronized • worldtimeapi.org');
-    return true;
-  } catch (error) {
-    state.offsetMs = 0;
-    setSyncStatus('Offline estimate • local device time');
-    return false;
-  } finally {
-    clearTimeout(timer);
+  function init() {
+    ['d', 'h', 'm', 's', 'dl', 'hl', 'ml', 'sl'].forEach(function (k) { els[k] = $(k); });
+    var box = $('motes'), f = document.createDocumentFragment();
+    for (var i = 0; i < 14; i++) { var p = document.createElement('span'); p.style.cssText = '--x:' + (Math.random() * 100).toFixed(1) + '%;--z:' + (3 + Math.random() * 5).toFixed(1) + 'px;--t:' + (14 + Math.random() * 14).toFixed(1) + 's;--dl:-' + (Math.random() * 20).toFixed(1) + 's;--dx:' + ((Math.random() - .5) * 8).toFixed(1) + 'vw'; f.appendChild(p); }
+    box.appendChild(f);
+    setStatus(); tick(); sync();
+    setInterval(sync, 600000);
+    document.addEventListener('visibilitychange', function () { document.body.classList.toggle('paused', document.hidden); if (!document.hidden) { tick(); sync(); } });
+    window.addEventListener('pageshow', tick); window.addEventListener('focus', tick);
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', function () { synced = false; setStatus(); });
   }
-}
-
-function handleVisibilityChange() {
-  if (document.hidden) {
-    return;
-  }
-
-  updateDisplay(true);
-  syncTimeSource();
-}
-
-document.addEventListener('visibilitychange', handleVisibilityChange);
-window.addEventListener('online', () => syncTimeSource());
-window.addEventListener('offline', () => setSyncStatus('Offline estimate • local device time'));
-
-(async function init() {
-  updateDisplay(true);
-  await syncTimeSource();
-  scheduleNextRefresh();
-  window.addEventListener('resize', () => updateDisplay(true));
-})();
-
-window.__jannatiStopwatch = {
-  START_TIME_UTC,
-  getElapsedMs,
-  formatElapsedMs,
-  getCurrentTimeMs,
-  syncTimeSource
-};
-
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})(typeof window !== 'undefined' ? window : globalThis);

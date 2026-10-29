@@ -1,77 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="The Eternal Jannati Stopwatch — a fixed-start, beautifully inspired elapsed-time display based on a heavenly garden aesthetic."
-    />
-    <title>The Eternal Jannati Stopwatch</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <div class="page-shell">
-      <div class="scene-glow scene-glow-left" aria-hidden="true"></div>
-      <div class="scene-glow scene-glow-right" aria-hidden="true"></div>
-      <div class="garden-haze" aria-hidden="true"></div>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Eternal Jannati Stopwatch</title>
+<meta name="description" content="A fixed-start elapsed-time display: days, hours, minutes and seconds since 29 October 2026, 6:30 AM Bangladesh time.">
+<meta name="theme-color" content="#f6efdc">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="scene" aria-hidden="true">
+  <div class="scene__sky"></div>
+  <div class="scene__img"></div>
+  <svg class="scene__arch" viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice" focusable="false">
+    <g fill="none" stroke="#c9a54e" stroke-width="1.2" opacity=".75">
+      <path d="M0 300V120a60 60 0 0 1 60-60h0a60 60 0 0 1 60 60v180"/>
+      <path d="M280 300V120a60 60 0 0 1 60-60h0a60 60 0 0 1 60 60v180"/>
+      <path d="M10 300V125a50 50 0 0 1 50-50 50 50 0 0 1 50 50v175" opacity=".6"/>
+      <path d="M290 300V125a50 50 0 0 1 50-50 50 50 0 0 1 50 50v175" opacity=".6"/>
+    </g>
+  </svg>
+  <div class="scene__rays"></div>
+  <div class="scene__water"></div>
+  <div class="scene__motes" id="motes"></div>
+</div>
 
-      <main class="app" aria-labelledby="projectTitle">
-        <header class="masthead">
-          <p class="subtitle">A Moment in Time, Inspired by the Beauty of Jannah</p>
-          <h1 id="projectTitle">THE ETERNAL JANNATI STOPWATCH</h1>
-          <p class="arabic-name" aria-label="Arabic title for the Jannati clock">ساعة الجنة</p>
-        </header>
+<main class="stage">
+  <header class="title">
+    <p class="ar" lang="ar" dir="rtl">ساعة الجنة</p>
+    <h1>The Eternal Jannati Stopwatch</h1>
+    <p class="sub">A Moment in Time, Inspired by the Beauty of Jannah</p>
+  </header>
 
-        <section class="stopwatch-panel" aria-label="Elapsed time display">
-          <div class="sync-status" id="syncStatus" aria-live="polite">Offline estimate • local device time</div>
-
-          <div
-            class="timer-line"
-            id="timerLine"
-            role="timer"
-            aria-live="off"
-            aria-atomic="true"
-            aria-label="Elapsed time"
-          >
-            <div class="time-unit days-unit" aria-label="Days">
-              <span class="value" id="daysValue">000000</span>
-              <span class="label">DAYS</span>
-            </div>
-
-            <span class="separator" aria-hidden="true">:</span>
-
-            <div class="time-unit" aria-label="Hours">
-              <span class="value" id="hoursValue">00</span>
-              <span class="label">HOURS</span>
-            </div>
-
-            <span class="separator" aria-hidden="true">:</span>
-
-            <div class="time-unit" aria-label="Minutes">
-              <span class="value" id="minutesValue">00</span>
-              <span class="label">MINUTES</span>
-            </div>
-
-            <span class="separator" aria-hidden="true">:</span>
-
-            <div class="time-unit" aria-label="Seconds">
-              <span class="value" id="secondsValue">00</span>
-              <span class="label">SECONDS</span>
-            </div>
-          </div>
-        </section>
-      </main>
+  <section class="panel" aria-labelledby="pl">
+    <h2 id="pl" class="sr">Time elapsed since 29 October 2026, 6:30:00 AM Bangladesh Standard Time</h2>
+    <div class="clock" id="clock" data-len="1" role="timer" aria-live="off" aria-atomic="true">
+      <span class="sr" id="sr"></span>
+      <div class="unit" aria-hidden="true"><b id="d">0</b><i id="dl">Days</i></div>
+      <span class="sep" aria-hidden="true">:</span>
+      <div class="unit" aria-hidden="true"><b id="h">00</b><i id="hl">Hours</i></div>
+      <span class="sep" aria-hidden="true">:</span>
+      <div class="unit" aria-hidden="true"><b id="m">00</b><i id="ml">Minutes</i></div>
+      <span class="sep" aria-hidden="true">:</span>
+      <div class="unit" aria-hidden="true"><b id="s">00</b><i id="sl">Seconds</i></div>
     </div>
+    <p class="note" id="note" hidden>Counting begins 29 Oct 2026, 6:30:00 AM (UTC+06:00).</p>
+    <p class="status" id="status" role="status"><span id="si" aria-hidden="true">◌</span> <span id="st">Checking time source…</span></p>
+  </section>
 
-    <div id="srStatus" class="sr-only" aria-live="polite" aria-atomic="true"></div>
-
-    <script src="script.js"></script>
-  </body>
+  <footer class="foot">An imaginative artistic interpretation inspired by Islamic descriptions of Jannah; it does not depict the unseen.</footer>
+</main>
+<script src="script.js"></script>
+</body>
 </html>
