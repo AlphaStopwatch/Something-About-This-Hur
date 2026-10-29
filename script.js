@@ -81,7 +81,11 @@
     ['d', 'h', 'm', 's', 'dl', 'hl', 'ml', 'sl'].forEach(function (k) { els[k] = $(k); });
     var box = $('motes'), f = document.createDocumentFragment();
     for (var i = 0; i < 14; i++) { var p = document.createElement('span'); p.style.cssText = '--x:' + (Math.random() * 100).toFixed(1) + '%;--z:' + (3 + Math.random() * 5).toFixed(1) + 'px;--t:' + (14 + Math.random() * 14).toFixed(1) + 's;--dl:-' + (Math.random() * 20).toFixed(1) + 's;--dx:' + ((Math.random() - .5) * 8).toFixed(1) + 'vw'; f.appendChild(p); }
+    for (var j = 0; j < 8; j++) { var q = document.createElement('span'); q.className = 'petal'; q.style.cssText = '--x:' + (Math.random() * 100).toFixed(1) + '%;--z:' + (7 + Math.random() * 6).toFixed(1) + 'px;--t:' + (22 + Math.random() * 16).toFixed(1) + 's;--dl:-' + (Math.random() * 30).toFixed(1) + 's;--dx:' + ((Math.random() - .5) * 14).toFixed(1) + 'vw'; f.appendChild(q); }
     box.appendChild(f);
+    var img = $('full'), fr = $('frame'), RAW = 'https://raw.githubusercontent.com/AlphaStopwatch/Something-About-This-Hur/main/Golden%20Veil%20by%20the%20Garden%20Waters.png', tried = false;
+    img.addEventListener('error', function () { if (!tried) { tried = true; img.src = RAW; } else { img.hidden = true; $('miss').hidden = false; } });
+    if ('IntersectionObserver' in window) { var io = new IntersectionObserver(function (e) { if (e[0].isIntersecting) { fr.classList.add('in'); io.disconnect(); } }, { threshold: .25 }); io.observe(fr); } else fr.classList.add('in');
     setStatus(); tick(); sync();
     setInterval(sync, 600000);
     document.addEventListener('visibilitychange', function () { document.body.classList.toggle('paused', document.hidden); if (!document.hidden) { tick(); sync(); } });
