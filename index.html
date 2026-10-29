@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="The Eternal Jannati Stopwatch — a fixed-start, beautifully inspired elapsed-time display based on a heavenly garden aesthetic."
+    />
+    <title>The Eternal Jannati Stopwatch</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="scene-glow scene-glow-left" aria-hidden="true"></div>
+      <div class="scene-glow scene-glow-right" aria-hidden="true"></div>
+      <div class="garden-haze" aria-hidden="true"></div>
+
+      <main class="app" aria-labelledby="projectTitle">
+        <header class="masthead">
+          <p class="subtitle">A Moment in Time, Inspired by the Beauty of Jannah</p>
+          <h1 id="projectTitle">THE ETERNAL JANNATI STOPWATCH</h1>
+          <p class="arabic-name" aria-label="Arabic title for the Jannati clock">ساعة الجنة</p>
+        </header>
+
+        <section class="stopwatch-panel" aria-label="Elapsed time display">
+          <div class="sync-status" id="syncStatus" aria-live="polite">Offline estimate • local device time</div>
+
+          <div
+            class="timer-line"
+            id="timerLine"
+            role="timer"
+            aria-live="off"
+            aria-atomic="true"
+            aria-label="Elapsed time"
+          >
+            <div class="time-unit days-unit" aria-label="Days">
+              <span class="value" id="daysValue">000000</span>
+              <span class="label">DAYS</span>
+            </div>
+
+            <span class="separator" aria-hidden="true">:</span>
+
+            <div class="time-unit" aria-label="Hours">
+              <span class="value" id="hoursValue">00</span>
+              <span class="label">HOURS</span>
+            </div>
+
+            <span class="separator" aria-hidden="true">:</span>
+
+            <div class="time-unit" aria-label="Minutes">
+              <span class="value" id="minutesValue">00</span>
+              <span class="label">MINUTES</span>
+            </div>
+
+            <span class="separator" aria-hidden="true">:</span>
+
+            <div class="time-unit" aria-label="Seconds">
+              <span class="value" id="secondsValue">00</span>
+              <span class="label">SECONDS</span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="srStatus" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
